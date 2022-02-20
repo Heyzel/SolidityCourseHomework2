@@ -12,7 +12,7 @@ contract SonicToken is ERC721, Ownable {
 
   Counters.Counter private _tokenIds;
 
-  string public uriPrefix = "";
+  string public uriPrefix = "https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG";
   string public uriSuffix = ".json";
   string public hiddenMetadataUri;
   
@@ -24,7 +24,7 @@ contract SonicToken is ERC721, Ownable {
   bool public revealed = false;
 
   constructor() ERC721("SonicVerse", "SV") {
-    setHiddenMetadataUri("ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/default-image");
+    setHiddenMetadataUri("https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/default-image.json");
   }
 
   modifier mintCompliance(uint256 _mintAmount) {
@@ -93,7 +93,7 @@ contract SonicToken is ERC721, Ownable {
     hiddenMetadataUri = _hiddenMetadataUri;
   }
 
-  function setUriPrefix(string memory _uriPrefix) public onlyOwner { // https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG
+  function setUriPrefix(string memory _uriPrefix) public onlyOwner { // https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/
     uriPrefix = _uriPrefix;
   }
 
@@ -103,11 +103,6 @@ contract SonicToken is ERC721, Ownable {
 
   function setPaused(bool _state) public onlyOwner {
     paused = _state;
-  }
-
-  function withdraw() public onlyOwner {
-    (bool os, ) = payable(owner()).call{value: address(this).balance}("");
-    require(os);
   }
 
   function _mintLoop(address _receiver, uint256 _mintAmount) internal {
