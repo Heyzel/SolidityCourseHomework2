@@ -16,7 +16,7 @@ contract SonicCoin is ERC20 {
 
     constructor() ERC20("Sonic Coin", "SC"){
         _mint(msg.sender, 100000 * 10 ** 18);
-        admin = msg.sender;
+        admin = tx.origin;
     }
 
     function mint(address to, uint amount) external {
