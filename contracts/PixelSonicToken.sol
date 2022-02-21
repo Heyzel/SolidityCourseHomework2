@@ -25,8 +25,12 @@ contract PixelSonicToken is ERC1155, Ownable {
     uint256 public maxMintAmountPerTx = 2;
     uint256 public maxMintQuantityPerTx = 5;
 
-    bool public paused = true;
-    bool public revealed = false; // this is the started state
+    bool public paused = true; // this is the started state as well
+    bool public revealed = false;
+
+    mapping(address => bool) private whitelistMint;
+    mapping(address => bool) private isAdmin;
+    mapping(address => bool) private isMinter;
 
     mapping(uint256 => mapping(address => uint256)) private balances;
     mapping(uint => uint) public quantityById;
@@ -37,7 +41,17 @@ contract PixelSonicToken is ERC1155, Ownable {
         setHiddenMetadataUri("https://gateway.pinata.cloud/ipfs/QmWpg9Ls6SxqvfkJ6ZnqMwHU4j4TNPoHokLfL4u9JGVX33/pixel-default-image.json");
     }
 
-     function mint(address _to, uint _id, uint _amount) external payable onlyOwner {
+    modifier onlyAdmin(){
+        require(isAdmin[msg.sender], "Only admin!");
+        _;
+    }
+
+    modifier onlyMinter(){
+        require(isMinter[msg.sender], "Only Minter!");
+        _;
+    }
+
+    function mint(address _to, uint _id, uint _amount) external payable onlyOwner {
          require(!paused, "The contract is paused!");
          require(_id > 0 && _id <= maxSupply, "Invalid mint id!");
          require(_amount > 0 && _amount <= maxMintQuantityPerTx, "Invalid mint quantity!");
@@ -109,6 +123,11 @@ contract PixelSonicToken is ERC1155, Ownable {
 
     }
 
+    function withdraw() public onlyOwner {
+        (bool os, ) = payable(owner()).call{value: address(this).balance}("");
+        require(os);
+    }
+
     function exist(uint _id) public view returns(bool) {
         return quantityById[_id] != 0;
     }
@@ -132,4 +151,17 @@ contract PixelSonicToken is ERC1155, Ownable {
     function setPaused(bool _state) public onlyOwner {
         paused = _state;
     }
+
+    function setMinter(address _minter, bool _state) external onlyOwner {
+        isMinter[_minter] = _state;
+    }
+
+    function setAdmin(address _admin, bool _state) external onlyOwner {
+        isAdmin[_admin] = _state;
+    }
+
+    function setWhitelist(address _addr, bool _state) external onlyAdmin {
+        whitelistMint[_addr] = _state;
+    }
+
 }

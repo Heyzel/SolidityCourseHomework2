@@ -20,8 +20,12 @@ contract SonicToken is ERC721, Ownable {
   uint256 public maxSupply = 12;
   uint256 public maxMintAmountPerTx = 2;
 
-  bool public paused = true;
+  bool public paused = true; // this is the started state as well
   bool public revealed = false;
+
+  mapping(address => bool) private whitelistMint;
+  mapping(address => bool) private isAdmin;
+  mapping(address => bool) private isMinter;
 
   constructor() ERC721("SonicVerse", "SV") {
     setHiddenMetadataUri("https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/default-image.json");
@@ -33,18 +37,34 @@ contract SonicToken is ERC721, Ownable {
     _;
   }
 
+  modifier onlyAdmin(){
+    require(isAdmin[msg.sender], "Only admin!");
+    _;
+  }
+
+  modifier onlyMinter(){
+    require(isMinter[msg.sender], "Only Minter!");
+    _;
+  }
+
   function totalSupply() public view returns (uint256) {
     return _tokenIds.current();
   }
 
   function mint(uint256 _mintAmount) public payable mintCompliance(_mintAmount) {
     require(!paused, "The contract is paused!");
-    require(msg.value >= cost * _mintAmount, "Insufficient funds!");
+    if(msg.value >= cost * _mintAmount){
+      revert();
+    }
+      _mintLoop(msg.sender, _mintAmount);
+  }
 
+  function mintByMinter(uint256 _mintAmount) public mintCompliance(_mintAmount) onlyMinter {
+    require(!paused, "The contract is paused!");
     _mintLoop(msg.sender, _mintAmount);
   }
   
-  function mintForAddress(uint256 _mintAmount, address _receiver) public mintCompliance(_mintAmount) onlyOwner {
+  function mintForAddress(uint256 _mintAmount, address _receiver) public mintCompliance(_mintAmount) onlyAdmin {
     _mintLoop(_receiver, _mintAmount);
   }
 
@@ -72,6 +92,10 @@ contract SonicToken is ERC721, Ownable {
     return ownedTokenIds;
   }
 
+  function balanceOfContract() public view onlyOwner returns(uint){
+    return address(this).balance;
+  }
+
   function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
     require(_exists(_tokenId), "ERC721Metadata: URI query for nonexistent token");
 
@@ -85,23 +109,28 @@ contract SonicToken is ERC721, Ownable {
         : "";
   }
 
-  function setRevealed(bool _state) public onlyOwner {
+  function withdraw() public onlyOwner {
+    (bool os, ) = payable(owner()).call{value: address(this).balance}("");
+    require(os);
+  }
+
+  function setRevealed(bool _state) public onlyAdmin {
     revealed = _state;
   }
 
-  function setHiddenMetadataUri(string memory _hiddenMetadataUri) public onlyOwner {
+  function setHiddenMetadataUri(string memory _hiddenMetadataUri) public onlyAdmin {
     hiddenMetadataUri = _hiddenMetadataUri;
   }
 
-  function setUriPrefix(string memory _uriPrefix) public onlyOwner { // https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/
+  function setUriPrefix(string memory _uriPrefix) public onlyAdmin { // https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/
     uriPrefix = _uriPrefix;
   }
 
-  function setUriSuffix(string memory _uriSuffix) public onlyOwner {
+  function setUriSuffix(string memory _uriSuffix) public onlyAdmin {
     uriSuffix = _uriSuffix;
   }
 
-  function setPaused(bool _state) public onlyOwner {
+  function setPaused(bool _state) public onlyAdmin {
     paused = _state;
   }
 
@@ -111,4 +140,17 @@ contract SonicToken is ERC721, Ownable {
       _safeMint(_receiver, _tokenIds.current());
     }
   }
+
+  function setMinter(address _minter, bool _state) external onlyOwner {
+    isMinter[_minter] = _state;
+  }
+
+  function setAdmin(address _admin, bool _state) external onlyOwner {
+    isAdmin[_admin] = _state;
+  }
+
+  function setWhitelist(address _addr, bool _state) external onlyAdmin {
+    whitelistMint[_addr] = _state;
+  }
+
 }
