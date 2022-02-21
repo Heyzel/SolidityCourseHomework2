@@ -5,31 +5,23 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./SonicCoin.sol";
+import "./SonicHelpers.sol";
 
-contract SonicToken is ERC721, Ownable {
+contract SonicToken is ERC721, Ownable, SonicHelpers {
   using Strings for uint256;
   using Counters for Counters.Counter;
 
   Counters.Counter private _tokenIds;
-
-  string public uriPrefix = "https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG";
-  string public uriSuffix = ".json";
-  string public hiddenMetadataUri;
   
   uint256 public cost = 0.01 ether;
   uint256 public maxSupply = 12;
   uint256 public maxMintAmountPerTx = 2;
 
-  bool public paused = true; // this is the started state as well
-  bool public revealed = false;
-
-  mapping(address => bool) private whitelistMint;
-  mapping(address => bool) private isAdmin;
-  mapping(address => bool) private isMinter;
-
   constructor() ERC721("SonicVerse", "SV") {
+    isAdmin[msg.sender] = true;
     setHiddenMetadataUri("https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/default-image.json");
+    setUriPrefix("https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG");
+    setUriSuffix(".json");
   }
 
   modifier mintCompliance(uint256 _mintAmount) {
@@ -38,13 +30,8 @@ contract SonicToken is ERC721, Ownable {
     _;
   }
 
-  modifier onlyAdmin(){
-    require(isAdmin[msg.sender], "Only admin!");
-    _;
-  }
-
-  modifier onlyMinter(){
-    require(isMinter[msg.sender], "Only Minter!");
+  modifier isNotPaused(){
+    require(!paused, "The contract is paused!");
     _;
   }
 
@@ -52,16 +39,14 @@ contract SonicToken is ERC721, Ownable {
     return _tokenIds.current();
   }
 
-  function mint(uint256 _mintAmount) public payable mintCompliance(_mintAmount) {
-    require(!paused, "The contract is paused!");
+  function mint(uint256 _mintAmount) public payable isNotPaused mintCompliance(_mintAmount) {
     if(msg.value >= cost * _mintAmount){
       revert();
     }
       _mintLoop(msg.sender, _mintAmount);
   }
 
-  function mintByMinter(uint256 _mintAmount) public mintCompliance(_mintAmount) onlyMinter {
-    require(!paused, "The contract is paused!");
+  function mintByMinter(uint256 _mintAmount) public isNotPaused mintCompliance(_mintAmount) onlyMinter {
     _mintLoop(msg.sender, _mintAmount);
   }
   
@@ -115,43 +100,11 @@ contract SonicToken is ERC721, Ownable {
     require(os);
   }
 
-  function setRevealed(bool _state) public onlyAdmin {
-    revealed = _state;
-  }
-
-  function setHiddenMetadataUri(string memory _hiddenMetadataUri) public onlyAdmin {
-    hiddenMetadataUri = _hiddenMetadataUri;
-  }
-
-  function setUriPrefix(string memory _uriPrefix) public onlyAdmin { // https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/
-    uriPrefix = _uriPrefix;
-  }
-
-  function setUriSuffix(string memory _uriSuffix) public onlyAdmin {
-    uriSuffix = _uriSuffix;
-  }
-
-  function setPaused(bool _state) public onlyAdmin {
-    paused = _state;
-  }
-
   function _mintLoop(address _receiver, uint256 _mintAmount) internal {
     for (uint256 i = 0; i < _mintAmount; i++) {
       _tokenIds.increment();
       _safeMint(_receiver, _tokenIds.current());
     }
-  }
-
-  function setMinter(address _minter, bool _state) external onlyOwner {
-    isMinter[_minter] = _state;
-  }
-
-  function setAdmin(address _admin, bool _state) external onlyOwner {
-    isAdmin[_admin] = _state;
-  }
-
-  function setWhitelist(address _addr, bool _state) external onlyAdmin {
-    whitelistMint[_addr] = _state;
   }
 
 }
