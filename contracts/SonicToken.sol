@@ -5,18 +5,21 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./SonicCoin.sol";
 
 contract SonicToken is ERC721, Ownable {
   using Strings for uint256;
   using Counters for Counters.Counter;
 
   Counters.Counter private _tokenIds;
+  SonicCoin public SC;
 
   string public uriPrefix = "https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG";
   string public uriSuffix = ".json";
   string public hiddenMetadataUri;
   
   uint256 public cost = 0.01 ether;
+  uint256 public costSC = 100; // one token costs 100 SonicCoins
   uint256 public maxSupply = 12;
   uint256 public maxMintAmountPerTx = 2;
 
@@ -66,6 +69,14 @@ contract SonicToken is ERC721, Ownable {
   
   function mintForAddress(uint256 _mintAmount, address _receiver) public mintCompliance(_mintAmount) onlyAdmin {
     _mintLoop(_receiver, _mintAmount);
+  }
+
+  function mintWithSC(uint256 _mintAmount) public mintCompliance(_mintAmount) {
+    require(!paused, "The contract is paused!");
+    uint allowance = SC.allowance(msg.sender, address(this));
+    require(allowance >= _mintAmount*(costSC), "You don't approve enough tokens.");
+    SC.transferFrom(msg.sender, address(this), _mintAmount*(costSC));
+    _mintLoop(msg.sender, _mintAmount);
   }
 
   function walletOfOwner(address _owner) 

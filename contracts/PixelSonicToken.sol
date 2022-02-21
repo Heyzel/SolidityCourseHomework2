@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "./SonicCoin.sol";
 
 contract PixelSonicToken is ERC1155, Ownable {
     using SafeMath for uint256;
@@ -13,12 +14,14 @@ contract PixelSonicToken is ERC1155, Ownable {
 
     string public name;
     string public symbol;
+    SonicCoin public SC;
 
     string public uriPrefix = "https://gateway.pinata.cloud/ipfs/QmWpg9Ls6SxqvfkJ6ZnqMwHU4j4TNPoHokLfL4u9JGVX33/";
     string public uriSuffix = ".json";
     string public hiddenMetadataUri;
 
     uint256 public cost = 0.01 ether;
+    uint256 public costSC = 10; // one token costs 10 SonicCoins
     uint256 public maxSupply = 12;
     uint256 public quantity = 10;
     
@@ -38,6 +41,7 @@ contract PixelSonicToken is ERC1155, Ownable {
     constructor() ERC1155("") {
         name = "PixelSonicVerse";
         symbol = "PSV";
+        SC = new SonicCoin();
         setHiddenMetadataUri("https://gateway.pinata.cloud/ipfs/QmWpg9Ls6SxqvfkJ6ZnqMwHU4j4TNPoHokLfL4u9JGVX33/pixel-default-image.json");
     }
 
@@ -51,7 +55,7 @@ contract PixelSonicToken is ERC1155, Ownable {
         _;
     }
 
-    function mint(address _to, uint _id, uint _amount) external payable onlyOwner {
+    function mint(address _to, uint _id, uint _amount) external payable {
          require(!paused, "The contract is paused!");
          require(_id > 0 && _id <= maxSupply, "Invalid mint id!");
          require(_amount > 0 && _amount <= maxMintQuantityPerTx, "Invalid mint quantity!");
@@ -62,7 +66,7 @@ contract PixelSonicToken is ERC1155, Ownable {
         quantityById[_id] = quantityById[_id].add(_amount);
     }
 
-    function mintBatch(address _to, uint[] memory _ids, uint[] memory _amounts) external payable onlyOwner {
+    function mintBatch(address _to, uint[] memory _ids, uint[] memory _amounts) external payable {
         require(!paused, "The contract is paused!");
         require(_ids.length == _amounts.length, "Sizes do not match");
         require(_ids.length <= maxMintAmountPerTx, "Invalid mint amount!");
@@ -76,6 +80,41 @@ contract PixelSonicToken is ERC1155, Ownable {
             totalQuantity.add(_amounts[i]);
         }
         require(msg.value >= cost * totalQuantity, "Insufficient funds!");
+        _mintBatch(_to, _ids, _amounts, "");
+        for(uint i = 0; i < _ids.length; i++){
+            balances[_ids[i]][_to] = balances[_ids[i]][_to].add(_amounts[i]);
+            quantityById[_ids[i]] = quantityById[_ids[i]].add(_amounts[i]);
+        }
+    }
+
+    function mintWithSonicCoin(address _to, uint _id, uint _amount) external {
+        require(!paused, "The contract is paused!");
+        require(_id > 0 && _id <= maxSupply, "Invalid mint id!");
+        require(_amount > 0 && _amount <= maxMintQuantityPerTx, "Invalid mint quantity!");
+        require(quantityById[_id].add(_amount) < quantity, "Sorry, max quantity exceeded!");
+        uint256 allowance = SC.allowance(msg.sender, address(this));
+        require(allowance >= _amount*(costSC), "You don't approve enough tokens.");
+        SC.transferFrom(msg.sender, address(this), _amount*(costSC));
+        _mint(_to, _id, _amount,"");
+        balances[_id][_to] = balances[_id][_to].add(_amount);
+        quantityById[_id] = quantityById[_id].add(_amount);
+    }
+
+    function mintBatchWithSC(address _to, uint[] memory _ids, uint[] memory _amounts) external {
+        require(!paused, "The contract is paused!");
+        require(_ids.length == _amounts.length, "Sizes do not match");
+        require(_ids.length <= maxMintAmountPerTx, "Invalid mint amount!");
+        for(uint i = 0; i < _ids.length; i++){
+            require(_ids[i] > 0 && _ids[i] <= maxSupply, "Invalid mint id!");
+        }
+        uint totalQuantity;
+        for(uint i = 0; i < _amounts.length; i++){
+            require(quantityById[_ids[i]].add(_amounts[i]) < quantity, "Sorry, max quantity exceeded!");
+            require(_amounts[i] <= maxMintQuantityPerTx, "Invalid mint quantity!");
+            totalQuantity.add(_amounts[i]);
+        }
+        uint256 allowance = SC.allowance(msg.sender, address(this));
+        require(allowance >= totalQuantity*(costSC), "Check the token allowance");
         _mintBatch(_to, _ids, _amounts, "");
         for(uint i = 0; i < _ids.length; i++){
             balances[_ids[i]][_to] = balances[_ids[i]][_to].add(_amounts[i]);
