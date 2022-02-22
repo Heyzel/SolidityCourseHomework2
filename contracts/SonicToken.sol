@@ -31,7 +31,7 @@ contract SonicToken is ERC721, Ownable, SonicHelpers {
   }
 
   modifier isNotPaused(){
-    require(!paused, "The contract is paused!");
+    require(!paused || isAdmin[msg.sender], "The contract is paused!");
     _;
   }
 
@@ -39,19 +39,39 @@ contract SonicToken is ERC721, Ownable, SonicHelpers {
     return _tokenIds.current();
   }
 
-  function mint(uint256 _mintAmount) public payable isNotPaused mintCompliance(_mintAmount) {
+  function mint(uint256 _mintAmount) 
+  public 
+  payable 
+  isNotPaused 
+  isStarted
+  mintCompliance(_mintAmount) {
     if(msg.value >= cost * _mintAmount){
       revert();
     }
       _mintLoop(msg.sender, _mintAmount);
   }
 
-  function mintByMinter(uint256 _mintAmount) public isNotPaused mintCompliance(_mintAmount) onlyMinter {
+  function mintByMinter(uint256 _mintAmount) 
+  public 
+  isNotPaused 
+  isStarted
+  mintCompliance(_mintAmount) 
+  onlyMinter {
     _mintLoop(msg.sender, _mintAmount);
   }
   
-  function mintForAddress(uint256 _mintAmount, address _receiver) public mintCompliance(_mintAmount) onlyAdmin {
+  function mintForAddress(uint256 _mintAmount, address _receiver) 
+  public 
+  mintCompliance(_mintAmount) 
+  isStarted
+  onlyAdmin {
     _mintLoop(_receiver, _mintAmount);
+  }
+
+  function burn(uint _id) external {
+    uint256[] memory wallet = walletOfOwner(msg.sender);
+    require(contains(wallet, _id), "This token is not yours!");
+    _burn(_id);
   }
 
   function walletOfOwner(address _owner) 
@@ -105,6 +125,15 @@ contract SonicToken is ERC721, Ownable, SonicHelpers {
       _tokenIds.increment();
       _safeMint(_receiver, _tokenIds.current());
     }
+  }
+
+  function contains(uint256[] memory _arr, uint256 _int) internal pure returns(bool){
+    for(uint i = 0; i < _arr.length; i++){
+      if(_arr[i] == _int){
+        return true;
+      }
+    }
+    return false;
   }
 
 }

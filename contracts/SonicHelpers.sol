@@ -10,7 +10,8 @@ contract SonicHelpers is Ownable {
     string public uriSuffix;
     string public hiddenMetadataUri;
 
-    bool public paused = true; // this is the started state as well
+    bool public paused = false;
+    bool public start = false;
     bool public revealed = false;
 
     mapping(address => bool) public whitelistMint;
@@ -23,6 +24,11 @@ contract SonicHelpers is Ownable {
     }
     modifier onlyMinter(){
         require(isMinter[msg.sender], "Only Minter!");
+        _;
+    }
+
+    modifier isStarted(){
+        require(start, "Sales have not started yet");
         _;
     }
 
@@ -56,6 +62,10 @@ contract SonicHelpers is Ownable {
 
     function setPaused(bool _state) public onlyAdmin {
         paused = _state;
+    }
+
+    function startSales() public onlyAdmin {
+        start = true;
     }
 
 }
