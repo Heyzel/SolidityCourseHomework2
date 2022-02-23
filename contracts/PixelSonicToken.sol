@@ -13,6 +13,11 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
     using SafeMath for uint256;
     using Strings for uint256;
 
+    event TokenMinted(address _owner, uint _id, uint _amount);
+    event TokensMinted(address _owner, uint[] _ids, uint[] _amount);
+    event TokenBurned(address _exOwner, uint _id, uint _amount);
+    event TokensBurned(address _exOwner, uint[] _ids, uint[] _amount);
+
     string public name;
     string public symbol;
     SonicCoin public SC;

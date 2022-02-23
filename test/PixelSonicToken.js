@@ -21,7 +21,7 @@ describe('PixelSonicToken contract', () => {
             expect(await sc.owner()).to.equal(owner.address);
         });
     });
-
+    
     describe('Tests for modifiers', () => {
 
         describe('IsNotPaused: fail if paused but not for admins', () =>{
@@ -232,12 +232,33 @@ describe('PixelSonicToken contract', () => {
             });
         });
 
-        describe('Tests for mintWithSonicCoin', () => {
-            await sc.connect(owner).mint(user, 1000);
+        it('Tests for mintWithSonicCoin', async () => {
+            await sc.connect(owner).mint(user.address, 100);
+            await sc.connect(user).approve(app.address, 20);
+            await expect(app.connect(user).mintWithSonicCoin(user.address, 1, 3)).to.be.revertedWith("You don't approve enough tokens.");
+            expect(await app.connect(user).mintWithSonicCoin(user.address, 1, 2)).to.emit(app, 'TokenMinted').withArgs(user.address, 1, 2);
+            expect(await app.connect(user).getQuantityById(1)).to.equal(2);
+            expect(await app.connect(user).getBalances(1, user.address)).to.equal(2);
         });
 
-        describe('Tests for mintBatchWithSC', () => {
-
+        it('Tests for mintBatchWithSC', async () => {
+            await sc.connect(owner).mint(user.address, 300);
+            await sc.connect(user).approve(app.address, 80);
+            await expect(app.connect(user).mintBatchWithSC(user.address, [1, 2, 3], [3, 3, 3])).to.be.revertedWith("Max mint amount per transaction exceeded");
+            await expect(app.connect(user).mintBatchWithSC(user.address, [1,2], [6, 1])).to.be.revertedWith("Invalid mint quantity!");
+            expect(await app.connect(user).mintBatchWithSC(user.address, [1,2], [4, 4])).to.emit(app, 'TokensMinted').withArgs(user.address, [1,2], [4,4]);
+            expect(await app.connect(user).getQuantityById(1)).to.equal(4);
+            expect(await app.connect(user).getBalances(1, user.address)).to.equal(4);
+            expect(await app.connect(user).getQuantityById(2)).to.equal(4);
+            expect(await app.connect(user).getBalances(2, user.address)).to.equal(4);
+            await sc.connect(user).approve(app.address, 60);
+            await app.connect(user).mintBatchWithSC(user.address, [1, 2], [3, 3]);
+            expect(await app.connect(user).getQuantityById(1)).to.equal(7);
+            expect(await app.connect(user).getBalances(1, user.address)).to.equal(7);
+            expect(await app.connect(user).getQuantityById(2)).to.equal(7);
+            expect(await app.connect(user).getBalances(2, user.address)).to.equal(7);
+            await sc.connect(user).approve(app.address, 100);
+            await expect(app.connect(user).mintBatchWithSC(user.address, [1, 2], [5, 5])).to.be.revertedWith("Sorry, max quantity exceeded!");
         });
 
         describe('Tests for burn', () => {
@@ -303,6 +324,20 @@ describe('PixelSonicToken contract', () => {
                 expect(uri).to.equal(expectedUri);
             });
         });
+
+        describe('Tests for withdraw', () => {
+            it('Should have 0 in the balance after a withdraw', async () => {
+                await app.connect(owner).startSales();
+                let balance = await ethers.provider.getBalance(app.address);
+                expect(balance.toString()).to.equal('0');
+                await app.connect(user).mint(user.address, 1, 5, {value: ethers.utils.parseEther("0.05")});
+                balance = await ethers.provider.getBalance(app.address);
+                expect(balance.toString()).to.equal('50000000000000000');
+                await app.connect(owner).withdraw();
+                balance = await ethers.provider.getBalance(app.address);
+                expect(balance.toString()).to.equal('0');
+            })
+        })
     });
 
     describe('Tests for Minter Role functions', () => {
@@ -366,4 +401,5 @@ describe('PixelSonicToken contract', () => {
             });
         });
     });
+    
 });
