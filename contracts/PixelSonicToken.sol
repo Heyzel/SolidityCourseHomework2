@@ -46,7 +46,7 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
 
     modifier validationsForMint(uint _id, uint _amount){
         require(_amount > 0 && _amount <= maxMintQuantityPerTx, "Invalid mint quantity!");
-        require(quantityById[_id].add(_amount) < quantity, "Sorry, max quantity exceeded!");
+        require(quantityById[_id].add(_amount) <= quantity, "Sorry, max quantity exceeded!");
         _;
     }
 
@@ -61,6 +61,7 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
             // _ids = [1,2,3,4].
             //  Prevent calls like _ids = [1, 1, 1, 1], _amounts = [2, 2, 2, 2]
             require(aux < _ids[i], "Repeated id!"); 
+            aux = _ids[i];
         }
         _;
     }
@@ -81,6 +82,7 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         _mint(_to, _id, _amount, "");
         balances[_id][_to] = balances[_id][_to].add(_amount);
         quantityById[_id] = quantityById[_id].add(_amount);
+        emit TokenMinted(_to, _id, _amount);
     }
 
     function mintBatch(address _to, uint[] memory _ids, uint[] memory _amounts) 
@@ -89,19 +91,20 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
     isNotPaused 
     isStarted
     validationsForBatch(_ids, _amounts) {
-        require(_ids.length <= maxMintAmountPerTx, "Invalid mint amount!");
+        require(_ids.length <= maxMintAmountPerTx, "Max mint amount per transaction exceeded");
         uint totalQuantity;
         for(uint i = 0; i < _amounts.length; i++){
             require(quantityById[_ids[i]].add(_amounts[i]) < quantity, "Sorry, max quantity exceeded!");
             require(_amounts[i] <= maxMintQuantityPerTx, "Invalid mint quantity!");
-            totalQuantity.add(_amounts[i]);
+            totalQuantity = totalQuantity.add(_amounts[i]);
         }
-        require(msg.value >= cost * totalQuantity, "Insufficient funds!");
+        require(msg.value >= (cost * totalQuantity), "Insufficient funds!");
         _mintBatch(_to, _ids, _amounts, "");
         for(uint i = 0; i < _ids.length; i++){
             balances[_ids[i]][_to] = balances[_ids[i]][_to].add(_amounts[i]);
             quantityById[_ids[i]] = quantityById[_ids[i]].add(_amounts[i]);
         }
+        emit TokensMinted(_to, _ids, _amounts);
     }
 
     function mintWithSonicCoin(address _to, uint _id, uint _amount) 
@@ -116,6 +119,7 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         _mint(_to, _id, _amount,"");
         balances[_id][_to] = balances[_id][_to].add(_amount);
         quantityById[_id] = quantityById[_id].add(_amount);
+        emit TokenMinted(_to, _id, _amount);
     }
 
     function mintBatchWithSC(address _to, uint[] memory _ids, uint[] memory _amounts) 
@@ -123,12 +127,12 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
     isNotPaused 
     isStarted
     validationsForBatch(_ids, _amounts) {
-        require(_ids.length <= maxMintAmountPerTx, "Invalid mint amount!");
+        require(_ids.length <= maxMintAmountPerTx, "Max mint amount per transaction exceeded");
         uint totalQuantity;
         for(uint i = 0; i < _amounts.length; i++){
             require(quantityById[_ids[i]].add(_amounts[i]) < quantity, "Sorry, max quantity exceeded!");
             require(_amounts[i] <= maxMintQuantityPerTx, "Invalid mint quantity!");
-            totalQuantity.add(_amounts[i]);
+            totalQuantity = totalQuantity.add(_amounts[i]);
         }
         uint256 allowance = SC.allowance(msg.sender, address(this));
         require(allowance >= totalQuantity*(costSC), "Check the token allowance");
@@ -137,17 +141,47 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
             balances[_ids[i]][_to] = balances[_ids[i]][_to].add(_amounts[i]);
             quantityById[_ids[i]] = quantityById[_ids[i]].add(_amounts[i]);
         }
+        emit TokensMinted(_to, _ids, _amounts);
+    }
+
+    function mintByMinter(address _to, uint _id, uint _amount) 
+    external
+    onlyMinter
+    validationsForId(_id) 
+    validationsForMint(_id, _amount) {
+        _mint(_to, _id, _amount, "");
+        balances[_id][_to] = balances[_id][_to].add(_amount);
+        quantityById[_id] = quantityById[_id].add(_amount);
+        emit TokenMinted(_to, _id, _amount);
+    }
+
+    function mintBatchByMinter(address _to, uint[] memory _ids, uint[] memory _amounts)
+    external 
+    onlyMinter
+    validationsForBatch(_ids, _amounts){
+        require(_ids.length <= maxMintAmountPerTx, "Max mint amount per transaction exceeded");
+        for(uint i = 0; i < _amounts.length; i++){
+            require(_amounts[i] <= maxMintQuantityPerTx, "Invalid mint quantity!");
+            require(quantityById[_ids[i]].add(_amounts[i]) < quantity, "Sorry, max quantity exceeded!");
+        }
+        _mintBatch(_to, _ids, _amounts, "");
+        for(uint i = 0; i < _ids.length; i++){
+            balances[_ids[i]][_to] = balances[_ids[i]][_to].add(_amounts[i]);
+            quantityById[_ids[i]] = quantityById[_ids[i]].add(_amounts[i]);
+        }
+        emit TokensMinted(_to, _ids, _amounts);
     }
 
     function burn(uint _id, uint _amount) 
     external 
     isNotPaused 
     validationsForId(_id) {
-        require(_amount > 0, "Invalid mint amount!");
+        require(_amount > 0, "Invalid burn amount!");
         require(balances[_id][msg.sender] >= _amount, "Not enough tokens to burn");
         balances[_id][msg.sender] = balances[_id][msg.sender].sub(_amount);
         quantityById[_id] = quantityById[_id].sub(_amount);
         _burn(msg.sender, _id, _amount);
+        emit TokenBurned(msg.sender, _id, _amount);
     }
 
     function burnBatch(uint[] memory _ids, uint[] memory _amounts) 
@@ -155,6 +189,7 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
     isNotPaused 
     validationsForBatch(_ids, _amounts) {
         for(uint i = 0; i < _amounts.length; i++){
+            require(_amounts[i] > 0, "Invalid burn amount!");
             require(balances[_ids[i]][msg.sender] >= _amounts[i], "Sorry, not enough tokens");
         }
         for(uint i = 0; i < _ids.length; i++){
@@ -162,12 +197,13 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
             quantityById[_ids[i]] = quantityById[_ids[i]].sub(_amounts[i]);
         }
         _burnBatch(msg.sender, _ids, _amounts);
+        emit TokensBurned(msg.sender, _ids, _amounts);
     }
 
     function uri(uint _id) public override view returns (string memory) {
         require(exist(_id), "Token does not exist");
 
-        if(revealed){
+        if(!revealed){
             return hiddenMetadataUri;
         }
 
@@ -185,6 +221,15 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
 
     function exist(uint _id) public view returns(bool) {
         return quantityById[_id] != 0;
+    }
+
+    function getQuantityById(uint _id) public view returns(uint) {
+        // this functions returns how many exist of that id
+        return quantityById[_id];
+    }
+
+    function getBalances(uint _id, address _addr) public view returns(uint) {
+        return balances[_id][_addr];
     }
 
 }

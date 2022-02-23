@@ -6,6 +6,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract SonicHelpers is Ownable {
 
+    event TokenMinted(address _owner, uint _id, uint _amount);
+    event TokensMinted(address _owner, uint[] _ids, uint[] _amount);
+    event TokenBurned(address _exOwner, uint _id, uint _amount);
+    event TokensBurned(address _exOwner, uint[] _ids, uint[] _amount);
+
     string public uriPrefix;
     string public uriSuffix;
     string public hiddenMetadataUri;
@@ -28,7 +33,7 @@ contract SonicHelpers is Ownable {
     }
 
     modifier isStarted(){
-        require(start, "Sales have not started yet");
+        require(start || whitelistMint[msg.sender], "Sales have not started yet");
         _;
     }
 

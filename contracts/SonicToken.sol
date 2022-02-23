@@ -53,8 +53,6 @@ contract SonicToken is ERC721, Ownable, SonicHelpers {
 
   function mintByMinter(uint256 _mintAmount) 
   public 
-  isNotPaused 
-  isStarted
   mintCompliance(_mintAmount) 
   onlyMinter {
     _mintLoop(msg.sender, _mintAmount);
