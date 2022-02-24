@@ -9,6 +9,10 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "./SonicCoin.sol";
 import "./SonicHelpers.sol";
 
+//@title A NFT Collection for the standard ERC1155 about Sonic The Hedgehog
+//@author Heyzel J. Moncada
+//@dev all functions are tested using hardhat
+
 contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
     using SafeMath for uint256;
     using Strings for uint256;
@@ -34,6 +38,8 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
     mapping(uint => uint) public quantityById;
 
     constructor() ERC1155("") {
+        //@notice the values set are the uri for the ipfs of the jsons
+        //@dev "PixelSonicVerse" and "PSV" are the parameters for the ERC1155 constructor
         isAdmin[msg.sender] = true;
         name = "PixelSonicVerse";
         symbol = "PSV";
@@ -76,6 +82,12 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         _;
     }
 
+    //@notice this funcion is for regular users that want to mint after the contract
+    //has been Droped and is not paused
+    //@param _to is the address of who will receive the tokens, _id the id of the
+    //desired token and _amount is the amount of that token
+    //@dev check the eth send be equals to the cost of the amounts (or more than the cost)
+    //and call _mintLoop for minting
     function mint(address _to, uint _id, uint _amount) 
     external 
     payable 
@@ -90,6 +102,10 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         emit TokenMinted(_to, _id, _amount);
     }
 
+    //@notice this function mint same as above but in batch
+    //@param _to is the address of who will receive the tokens, _ids is an array of the
+    //desired tokens and _amounts is an array of the amount of that tokens
+    //@dev validates that the input meets the conditions for minting
     function mintBatch(address _to, uint[] memory _ids, uint[] memory _amounts) 
     external 
     payable 
@@ -112,6 +128,8 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         emit TokensMinted(_to, _ids, _amounts);
     }
 
+    //@notice this function is equal to mint but paying with SonicCoins instead of eth
+    //@param the same as in mint
     function mintWithSonicCoin(address _to, uint _id, uint _amount) 
     external 
     isNotPaused 
@@ -127,6 +145,8 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         emit TokenMinted(_to, _id, _amount);
     }
 
+    //@notice this function is equal to mintBatch but paying with SonicCoins instead of eth
+    //@param the same as in mintBatch
     function mintBatchWithSC(address _to, uint[] memory _ids, uint[] memory _amounts) 
     external 
     isNotPaused 
@@ -149,6 +169,8 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         emit TokensMinted(_to, _ids, _amounts);
     }
 
+    //@notice this function allows to the Role Minter mint without cost
+    //@param the same as in mint
     function mintByMinter(address _to, uint _id, uint _amount) 
     external
     onlyMinter
@@ -160,6 +182,8 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         emit TokenMinted(_to, _id, _amount);
     }
 
+    //@notice this function allows to the Role Minter mint without cost in batch
+    //@param the same as in mintBatch
     function mintBatchByMinter(address _to, uint[] memory _ids, uint[] memory _amounts)
     external 
     onlyMinter
@@ -177,6 +201,10 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         emit TokensMinted(_to, _ids, _amounts);
     }
 
+    //@notice this function burn the tokens only if they already exist
+    //and belong to the sender
+    //@param _id is the id of the token and _amount is the amount of the token what
+    //does he want to burn
     function burn(uint _id, uint _amount) 
     external 
     isNotPaused 
@@ -189,6 +217,9 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         emit TokenBurned(msg.sender, _id, _amount);
     }
 
+    //@notice this function burn the tokens same as in burn but in batch
+    //@param _ids an array of the ids of the tokens and _amounts an array of the
+    //tokens what does he want to burn
     function burnBatch(uint[] memory _ids, uint[] memory _amounts) 
     external 
     isNotPaused 
@@ -205,6 +236,10 @@ contract PixelSonicToken is ERC1155, Ownable, SonicHelpers {
         emit TokensBurned(msg.sender, _ids, _amounts);
     }
 
+    //@param the id of the token what does he want to knows his uri
+    //@dev validate the id exist and check if the tokens are revealed
+    //@return the uri of the token if tokens are revealed, else return the uri
+    //of the default json
     function uri(uint _id) public override view returns (string memory) {
         require(exist(_id), "Token does not exist");
 

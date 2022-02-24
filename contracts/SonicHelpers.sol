@@ -4,6 +4,10 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+//@title An auxiliary contract for utils for SonicToken.sol and PixelSonicToke.sol
+//@author Heyzel J. Moncada
+//@dev all functions are tested using hardhat
+
 contract SonicHelpers is Ownable {
 
     string public uriPrefix;
@@ -52,7 +56,7 @@ contract SonicHelpers is Ownable {
         hiddenMetadataUri = _hiddenMetadataUri;
     }
 
-    function setUriPrefix(string memory _uriPrefix) public onlyAdmin { // https://gateway.pinata.cloud/ipfs/QmbvdTFKw19w7NTURNhCneQoVkxjcWTz5KDnUdd1vZPrRG/
+    function setUriPrefix(string memory _uriPrefix) public onlyAdmin {
         uriPrefix = _uriPrefix;
     }
 
