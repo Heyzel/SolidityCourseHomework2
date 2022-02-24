@@ -32,7 +32,7 @@ contract SonicHelpers is Ownable {
         _;
     }
 
-    function setMinter(address _minter, bool _state) external onlyOwner {
+    function setMinter(address _minter, bool _state) external onlyAdmin {
         isMinter[_minter] = _state;
     }
 
@@ -66,6 +66,18 @@ contract SonicHelpers is Ownable {
 
     function startSales() public onlyAdmin {
         start = true;
+    }
+
+    function checkAdmin(address addr) public view returns(bool){
+        return isAdmin[addr];
+    }
+
+    function checkMinter(address addr) public view returns(bool){
+        return isMinter[addr];
+    }
+
+    function checkWhitelist(address addr) public view returns(bool){
+        return whitelistMint[addr];
     }
 
 }
